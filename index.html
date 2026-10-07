@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- No network access at all: the draft lives only in the link after '#', which browsers never send to a server. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>SettonAi Mail</title>
+<style>
+  /* One column, phone first: the draft as a letter, the send actions pinned below it. */
+  :root {
+    --bg: #f3f1ec; --card: #fffdf8; --ink: #1f2420; --muted: #626a63; --line: #d9d5cb;
+    --accent: #1f5c4a; --accent-ink: #ffffff; --soft: #e6eee9;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151917; --card: #1d2320; --ink: #e9ece8; --muted: #9aa49d; --line: #2f3833;
+            --accent: #7cc3a8; --accent-ink: #0f1a15; --soft: #22302a; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans);
+         padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+  main { max-width: 640px; margin: 0 auto; display: grid; gap: 16px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  h1 { font: 600 1.05rem/1.2 var(--sans); letter-spacing: .02em; margin: 0; }
+  .tag { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .letter { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 12px; }
+  .row { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 8px; align-items: baseline; }
+  .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
+  .value { overflow-wrap: anywhere; }
+  .subject { font: 600 1.15rem/1.35 var(--serif); }
+  .body { border-top: 1px solid var(--line); padding-top: 12px; white-space: pre-wrap; overflow-wrap: anywhere;
+          font: 1.02rem/1.6 var(--serif); }
+  .actions { display: grid; gap: 10px; }
+  .btn { display: block; text-align: center; text-decoration: none; padding: 15px 16px; border-radius: 12px;
+         font: 600 1.02rem/1.2 var(--sans); border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; width: 100%; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .note { color: var(--muted); font-size: .85rem; margin: 0; }
+  .status { min-height: 1.2em; color: var(--accent); font-size: .9rem; margin: 0; }
+  .empty { background: var(--soft); border-radius: 14px; padding: 18px; }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>SettonAi Mail</h1><span class="tag">Draft</span></header>
+
+  <section id="draft" class="letter" hidden>
+    <div class="row"><span class="label">To</span><span class="value" id="to"></span></div>
+    <div class="row" id="ccrow" hidden><span class="label">Cc</span><span class="value" id="cc"></span></div>
+    <div class="row"><span class="label">Subject</span><span class="value subject" id="subject"></span></div>
+    <div class="body" id="body"></div>
+  </section>
+
+  <section id="actions" class="actions" hidden>
+    <a class="btn primary" id="mail" href="#">Open in Mail</a>
+    <a class="btn" id="gmail" href="#">Open in Gmail app</a>
+    <button class="btn" id="copy" type="button">Copy text</button>
+    <p class="status" id="status" role="status"></p>
+    <p class="note">Nothing is sent until you press Send in your mail app.</p>
+  </section>
+
+  <section id="none" class="empty" hidden>
+    <p>No draft in this link. Open the link from SettonAi's message on Telegram.</p>
+  </section>
+</main>
+<script>
+(function () {
+  var p = new URLSearchParams(location.hash.slice(1));
+  var to = (p.get("to") || "").trim(), cc = (p.get("cc") || "").trim();
+  var subject = p.get("su") || "", body = p.get("body") || "";
+  if (!subject && !body) { document.getElementById("none").hidden = false; return; }
+  var enc = encodeURIComponent;
+  var okAddr = function (s) { return /^[^\s@,?&#]+@[^\s@,?&#]+\.[A-Za-z]{2,}$/.test(s); };
+  var tos = to ? to.split(",").map(function (s) { return s.trim(); }).filter(okAddr) : [];
+  var ccs = cc ? cc.split(",").map(function (s) { return s.trim(); }).filter(okAddr) : [];
+  document.getElementById("to").textContent = tos.length ? tos.join(", ") : "(add the recipient in Mail)";
+  if (ccs.length) { document.getElementById("cc").textContent = ccs.join(", "); document.getElementById("ccrow").hidden = false; }
+  document.getElementById("subject").textContent = subject;
+  document.getElementById("body").textContent = body;
+  var q = "subject=" + enc(subject) + "&body=" + enc(body) + (ccs.length ? "&cc=" + enc(ccs.join(",")) : "");
+  document.getElementById("mail").href = "mailto:" + tos.map(enc).join(",").replace(/%40/g, "@") + "?" + q;
+  document.getElementById("gmail").href = "googlegmail:///co?to=" + enc(tos.join(",")) + "&" + q;
+  document.getElementById("copy").addEventListener("click", function () {
+    var text = (tos.length ? "To: " + tos.join(", ") + "\n" : "") + "Subject: " + subject + "\n\n" + body;
+    var status = document.getElementById("status");
+    var done = function () { status.textContent = "Copied."; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { status.textContent = "Select the text above to copy it."; });
+    } else { status.textContent = "Select the text above to copy it."; }
+  });
+  document.getElementById("draft").hidden = false;
+  document.getElementById("actions").hidden = false;
+})();
+</script>
+</body>
+</html>
